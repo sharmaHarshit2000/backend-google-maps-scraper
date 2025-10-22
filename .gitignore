@@ -1,0 +1,44 @@
+# Node dependencies
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+
+# Puppeteer / Chromium cache
+.cache/
+tmp/
+data/
+maps-scraper/
+exports/
+scraped_data/
+__pycache__/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+coverage/
+out/
+build/
+
+# OS / IDE specific
+*.swp
+*.swo
+*.swn
+.idea/
+.vscode/
+*.bak
+*.tmp
+*.lock
+
+# Render / deployment
+.render/
+.vercel/
+.netlify/
