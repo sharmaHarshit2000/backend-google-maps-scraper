@@ -41,7 +41,7 @@ app.post("/scrape", (req, res) => {
   console.log(`🚀 Starting scrape for: ${url}`);
 
   // Run as a subprocess for memory safety
-  const scraper = spawn("node", [path.join(__dirname, "scraper.js"), url], {
+  const scraper = spawn("node", [path.join(__dirname, "scrape-maps.js"), url], {
     stdio: ["ignore", "pipe", "pipe"],
   });
 
