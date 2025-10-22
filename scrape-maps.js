@@ -6,7 +6,7 @@ import os from "os";
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* ---------------------- Utility Helpers ---------------------- */
+// ✅ Utility helpers
 const cleanWebsite = (url) => {
   if (!url || url === "N/A") return "N/A";
   if (url.startsWith("https://www.google.com/maps/")) return "N/A";
@@ -29,6 +29,7 @@ const extractKeywordFromUrl = (url) => {
       url.match(/\/maps\/place\/([^/@?]+)/);
     if (match && match[1])
       return decodeURIComponent(match[1]).replace(/[^\w]+/g, "_").toLowerCase();
+
     const coord = url.match(/@([\d.,]+)/);
     if (coord && coord[1]) return `coords_${coord[1].replace(/[^\d]+/g, "_")}`;
     return "maps_data";
@@ -37,10 +38,10 @@ const extractKeywordFromUrl = (url) => {
   }
 };
 
-/* ---------------------- Scraper Logic ---------------------- */
+// ✅ Main scraper
 export async function scrapeGoogleMaps(searchUrl) {
   console.log("🔍 Starting Google Maps scraper...");
-  console.log(`🌐 URL: ${searchUrl}`);
+  console.log(`🌐 Target URL: ${searchUrl}`);
 
   const isProd =
     process.env.RENDER === "true" || process.env.NODE_ENV === "production";
@@ -52,14 +53,17 @@ export async function scrapeGoogleMaps(searchUrl) {
 
   try {
     if (isProd) {
-      console.log("🧊 Using @sparticuz/chromium (Render/EC2)");
+      console.log("🧊 Using Sparticuz Chromium (Render/EC2)");
       const executablePath = await chromium.executablePath();
+
       browser = await puppeteer.launch({
         args: [
           ...chromium.args,
           "--disable-dev-shm-usage",
           "--no-sandbox",
           "--disable-setuid-sandbox",
+          "--single-process",
+          "--no-zygote",
         ],
         defaultViewport: chromium.defaultViewport,
         executablePath,
@@ -67,14 +71,14 @@ export async function scrapeGoogleMaps(searchUrl) {
         ignoreHTTPSErrors: true,
       });
     } else {
-      console.log("💻 Running locally...");
+      console.log("💻 Using local Chromium");
       browser = await puppeteer.launch({
         headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
     }
   } catch (err) {
-    console.error("❌ Puppeteer launch failed:", err);
+    console.error("❌ Browser launch failed:", err);
     throw err;
   }
 
@@ -85,16 +89,16 @@ export async function scrapeGoogleMaps(searchUrl) {
   );
 
   try {
-    console.log("⏳ Loading results page...");
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: 90000 });
+    console.log("⏳ Loading page...");
+    await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 90000 });
     await page.waitForSelector(".Nv2PK", { timeout: 90000 });
   } catch (err) {
-    console.error("❌ Failed to load Google Maps results:", err.message);
+    console.error("❌ Google Maps page failed to load:", err.message);
     await browser.close();
-    throw new Error("Google Maps page did not load");
+    throw new Error("Page did not load correctly");
   }
 
-  console.log("📜 Scrolling results...");
+  console.log("📜 Scrolling...");
   let prevCount = 0,
     stableRounds = 0;
 
@@ -128,16 +132,16 @@ export async function scrapeGoogleMaps(searchUrl) {
     try {
       await places[i].hover();
       await places[i].click();
-      await delay(4500);
+      await delay(4000);
 
       const data = await page.evaluate(() => {
         const t = (sel) => document.querySelector(sel)?.innerText?.trim() || "";
         const h = (sel) => document.querySelector(sel)?.href?.trim() || "";
+
         const clean = (txt) =>
           txt
             ? txt
                 .replace(/[\uE000-\uF8FF]/g, "")
-                .replace(/[]/g, "")
                 .replace(/\s+/g, " ")
                 .trim()
             : "";
@@ -165,7 +169,7 @@ export async function scrapeGoogleMaps(searchUrl) {
 
       if (!data.phone) {
         skipped++;
-        console.log(`Skipped (no phone): ${data.name || "Unknown"}`);
+        console.log(`⏭️ Skipped (no phone): ${data.name || "Unknown"}`);
         await page.keyboard.press("Escape");
         await delay(1000);
         continue;
@@ -189,7 +193,7 @@ export async function scrapeGoogleMaps(searchUrl) {
     }
   }
 
-  // Save CSV
+  // ✅ Save CSV
   const csv =
     "Name,Phone,Address,Website\n" +
     results
@@ -219,7 +223,7 @@ export async function scrapeGoogleMaps(searchUrl) {
   return filePath;
 }
 
-/* ---------------------- CLI Entry ---------------------- */
+// ✅ CLI entrypoint
 if (process.argv[2]) {
   const url = process.argv[2];
   scrapeGoogleMaps(url).catch((err) => {
